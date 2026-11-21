@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<!-- 2026-11-21 rev.7 — ① 첫 화면 오른쪽 그림(hero.svg)을 html 안에 직접 넣음: 그림 파일이 없어도 빈 회색 칸이 안 생김 -->
+<!-- 2026-11-21 rev.6 — 휴대폰 화면 아래에 항상 떠 있는 [지금 신청하기] 버튼 추가 (누르면 신청 완료 토스트, 컴퓨터 화면에서는 숨김) -->
+<!-- 2026-11-21 rev.5 — ① 첫 화면에 "특강 시작까지" 카운트다운 추가 (일·시간·분·초, 1초마다 줄어듦) -->
+<!-- 2026-11-21 rev.4 — ⑧ 자주 묻는 질문: 질문을 누르면 답이 펼쳐지고 다시 누르면 접히게 함 (처음엔 모두 접힘) -->
+<!-- 2026-11-21 rev.3 — ⑦ 참가비 · ⑨ 마지막 신청 유도 버튼에도 같은 신청 완료 토스트 연결 -->
+<!-- 2026-11-21 rev.2 — 헤더·첫 화면 신청 버튼을 누르면 화면 가운데에 와인색 "신청이 완료되었습니다!" 토스트 추가 -->
+<!-- 2026-11-21 rev.1 — 메인페이지 처음 만듦 (1단계: 화면만 · 버튼은 모양만 · 기능 없음) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rev.7 AI 특강 신청 페이지 — 첫 화면 그림 파일 없이도 보이게</title>
+<style>
+  /* ===== 기본 색과 글꼴 ===== */
+  :root{
+    --bg:#e7e6e2;        /* 밝은 회색 바탕 */
+    --card:#f6f5f1;      /* 밝은 카드 */
+    --ink:#111111;       /* 검정 글자 / 어두운 구역 */
+    --sub:#5d5c58;       /* 흐린 글자 */
+    --orange:#e8592a;    /* 포인트 주황 */
+    --tag:#eef08c;       /* 노란 이름표 */
+    --dark2:#1c1c1c;     /* 어두운 구역 안 카드 */
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.6;
+    word-break:keep-all;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  section{padding:64px 0}
+  h1,h2{font-weight:900;letter-spacing:-.03em;line-height:1.2}
+  h2{font-size:28px;margin-bottom:28px}
+  .tag{display:inline-block;background:var(--tag);color:var(--ink);font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;margin-bottom:14px}
+
+  /* ===== 버튼 (모양만) ===== */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--orange);color:#fff;font-weight:800;font-size:17px;
+    border:0;border-radius:999px;padding:16px 32px;cursor:pointer;font-family:inherit}
+  .btn:hover{filter:brightness(1.06)}
+  .btn-big{width:100%;max-width:360px;min-height:58px}
+  .btn-small{font-size:14px;padding:9px 18px}
+
+  /* ===== 어두운 구역 ===== */
+  .dark{background:var(--ink);color:#fff}
+  .dark .sub{color:#b9b8b3}
+
+  /* ===== 헤더 ===== */
+  .header{position:sticky;top:0;z-index:10;background:rgba(231,230,226,.92);backdrop-filter:blur(8px);border-bottom:1px solid #d6d5d0}
+  .header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .logo{font-weight:900;font-size:16px;letter-spacing:-.02em}
+  .logo b{color:var(--orange)}
+
+  /* ===== ① 첫 화면 ===== */
+  .hero{padding:24px 0 56px}
+  .hero-grid{display:grid;gap:14px}
+  .hero-text{background:var(--card);border-radius:var(--radius);padding:32px 24px}
+  .hero-small{font-size:14px;font-weight:700;color:var(--orange);margin-bottom:12px}
+  .hero h1{font-size:38px;margin-bottom:14px}
+  .hero-sub{font-size:18px;color:var(--sub);font-weight:600;margin-bottom:24px}
+  .info{list-style:none;display:grid;gap:8px;margin-bottom:28px;font-size:16px;font-weight:600}
+  .hero-img{border-radius:var(--radius);overflow:hidden;background:#cfcec8;min-height:280px;
+    display:flex;align-items:center;justify-content:center;color:#77766f;font-size:14px}
+  .hero-img{position:relative}
+  .hero-img svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .hero-img{background:#e9e7e2}   /* 그림 위쪽 벽 색과 같은 색으로 빈 곳을 채움 */
+
+  /* ===== ① 첫 화면 · 카운트다운 ===== */
+  .countdown{margin-bottom:24px}
+  .cd-title{font-size:14px;font-weight:700;color:var(--sub);margin-bottom:8px}
+  .cd-boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:360px}
+  .cd-box{background:var(--ink);color:#fff;border-radius:12px;padding:10px 4px;text-align:center}
+  .cd-num{display:block;font-size:26px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+  .cd-unit{display:block;font-size:12px;color:#b9b8b3;margin-top:2px}
+
+  /* ===== ② 이런 분께 추천합니다 ===== */
+  .check-list{list-style:none;display:grid;gap:12px}
+  .check-list li{background:var(--card);border-radius:var(--radius);padding:18px 20px;font-size:17px;font-weight:600;display:flex;gap:12px;align-items:flex-start}
+  .check-list li::before{content:"✔";flex:none;width:26px;height:26px;border-radius:50%;background:var(--orange);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+
+  /* ===== ③ 커리큘럼 ===== */
+  .timeline{list-style:none;border-left:2px solid #3a3a3a;margin-left:6px}
+  .timeline li{position:relative;padding:0 0 28px 24px}
+  .timeline li:last-child{padding-bottom:0}
+  .timeline li::before{content:"";position:absolute;left:-8px;top:6px;width:14px;height:14px;border-radius:50%;background:var(--orange)}
+  .timeline .time{font-size:15px;font-weight:800;color:var(--orange);letter-spacing:.02em}
+  .timeline .what{font-size:19px;font-weight:800;margin:2px 0}
+  .timeline .desc{font-size:15px}
+  .timeline .rest::before{background:#5a5a5a}
+  .timeline .rest .time{color:#8d8c87}
+
+  /* ===== 카드 묶음 (④ 강점 · ⑥ 혜택) ===== */
+  .cards{display:grid;gap:14px}
+  .card{background:var(--card);border-radius:var(--radius);padding:26px 22px}
+  .card .num{width:36px;height:36px;border-radius:10px;background:var(--ink);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+  .card h3{font-size:20px;font-weight:900;letter-spacing:-.02em;margin-bottom:8px}
+  .card p{color:var(--sub);font-size:15px}
+  .cards-orange .card{background:var(--orange);color:#fff}
+  .cards-orange .card p{color:#ffe6dc}
+  .cards-orange .card .num{background:#fff;color:var(--orange)}
+
+  /* ===== ⑤ 강사 소개 ===== */
+  .teacher{display:grid;gap:20px;background:var(--card);border-radius:var(--radius);padding:22px}
+  .photo-slot{background:#cfcec8;border-radius:12px;aspect-ratio:4/5;max-width:320px;width:100%;
+    display:flex;align-items:center;justify-content:center;color:#6f6e68;font-size:15px;font-weight:600}
+  .teacher h3{font-size:24px;font-weight:900;margin-bottom:4px}
+  .teacher .one{color:var(--orange);font-weight:700;margin-bottom:16px}
+  .teacher ul{list-style:none;display:grid;gap:8px;color:var(--sub)}
+
+  /* ===== ⑦ 참가비 ===== */
+  .price-box{background:var(--card);border-radius:var(--radius);padding:36px 24px;text-align:center}
+  .price-old{font-size:18px;color:#8d8c87;text-decoration:line-through}
+  .price-new{font-size:48px;font-weight:900;color:var(--orange);letter-spacing:-.03em;line-height:1.1;margin:6px 0 12px}
+  .price-note{font-size:14px;color:var(--sub);margin-bottom:26px}
+
+  /* ===== ⑧ 자주 묻는 질문 ===== */
+  .faq{display:grid;gap:12px}
+  .faq-item{background:var(--card);border-radius:var(--radius);padding:20px}
+  .faq-q{font-size:17px;font-weight:800;cursor:pointer;list-style:none;
+    display:flex;align-items:flex-start;gap:0;padding-right:36px;position:relative}
+  .faq-q::-webkit-details-marker{display:none}
+  .faq-q::after{content:"+";position:absolute;right:0;top:-2px;width:26px;height:26px;border-radius:50%;
+    background:var(--ink);color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .faq-item[open] .faq-q::after{content:"−";background:var(--orange)}
+  .faq-item[open] .faq-q{margin-bottom:10px}
+  .faq-q span,.faq-a span{color:var(--orange);margin-right:6px}
+  .faq-a{color:var(--sub);font-size:15px}
+
+  /* ===== ⑨ 마지막 신청 유도 ===== */
+  .final{text-align:center;padding:80px 0;background:
+    radial-gradient(ellipse at 50% 120%,rgba(232,89,42,.45),transparent 60%),var(--ink)}
+  .final h2{font-size:32px;margin-bottom:12px}
+  .final .sub{margin-bottom:28px;font-size:16px}
+
+  /* ===== 푸터 ===== */
+  .footer{background:var(--ink);color:#8d8c87;border-top:1px solid #2a2a2a;padding:32px 0;font-size:14px}
+  .footer p+p{margin-top:4px}
+
+  /* ===== 신청 완료 토스트 (화면 가운데 · 와인색) ===== */
+  .toast{position:fixed;left:50%;top:50%;z-index:100;
+    transform:translate(-50%,-50%) scale(.92);opacity:0;pointer-events:none;
+    background:#7b1e2b;color:#fff;font-weight:800;font-size:17px;text-align:center;
+    padding:20px 28px;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.3);
+    width:max-content;max-width:calc(100% - 40px);
+    transition:opacity .25s ease,transform .25s ease}
+  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  /* ===== 휴대폰 하단 고정 신청 버튼 ===== */
+  .footer{padding-bottom:110px}   /* 고정 버튼이 푸터 글자를 가리지 않게 */
+  .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;
+    padding:12px 20px calc(12px + env(safe-area-inset-bottom));
+    background:rgba(17,17,17,.92);backdrop-filter:blur(8px)}
+  .sticky-cta .btn{width:100%;min-height:54px}
+
+  /* ===== 컴퓨터 화면 ===== */
+  @media (min-width:768px){
+    section{padding:96px 0}
+    h2{font-size:38px;margin-bottom:36px}
+    .hero{padding:32px 0 80px}
+    .hero-grid{grid-template-columns:1.05fr 1fr;align-items:stretch}
+    .hero-text{padding:48px 40px;display:flex;flex-direction:column;justify-content:center}
+    .hero h1{font-size:54px}
+    .hero-img{min-height:460px}
+    .check-list{grid-template-columns:1fr 1fr}
+    .cards{grid-template-columns:repeat(3,1fr)}
+    .teacher{grid-template-columns:300px 1fr;align-items:center;padding:28px}
+    .price-new{font-size:64px}
+    .final h2{font-size:46px}
+    .footer{padding-bottom:32px}
+    .sticky-cta{display:none}   /* 컴퓨터 화면에서는 하단 고정 버튼 숨김 */
+  }
+</style>
+</head>
+<body>
+
+<!-- 헤더: 화면 맨 위 띠 -->
+<header class="header">
+  <div class="wrap">
+    <div class="logo">호서대학교 <b>×</b> 일잘러랩</div>
+    <button class="btn btn-small js-apply" type="button">신청하기</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ① 첫 화면 -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <p class="hero-small">호서대학교 × 일잘러랩 AI 특강</p>
+      <h1>퇴근이 빨라지는<br>AI 업무 활용법</h1>
+      <p class="hero-sub">매일 하던 일, AI에게 넘기는 3시간</p>
+      <ul class="info">
+        <li>📅 2026년 12월 12일(토) 오후 2시 ~ 5시</li>
+        <li>📍 호서대학교 강석규 교육관</li>
+        <li>👥 선착순 40명</li>
+      </ul>
+      <!-- 카운트다운: 특강 시작까지 남은 시간 -->
+      <div class="countdown">
+        <p class="cd-title">특강 시작까지</p>
+        <div class="cd-boxes">
+          <div class="cd-box"><span class="cd-num" id="cd-d">0</span><span class="cd-unit">일</span></div>
+          <div class="cd-box"><span class="cd-num" id="cd-h">00</span><span class="cd-unit">시간</span></div>
+          <div class="cd-box"><span class="cd-num" id="cd-m">00</span><span class="cd-unit">분</span></div>
+          <div class="cd-box"><span class="cd-num" id="cd-s">00</span><span class="cd-unit">초</span></div>
+        </div>
+      </div>
+      <button class="btn btn-big js-apply" type="button">지금 신청하기</button>
+    </div>
+    <!-- 첫 화면 그림 (hero.svg 내용을 그대로 넣어 둠 · 따로 파일이 필요 없음) -->
+    <div class="hero-img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" preserveAspectRatio="xMidYMax meet" role="img" aria-label="노을 진 창가 책상 위 노트북 그림">
+  <!-- 첫 화면 그림: 해 질 녘 창가 책상 위 노트북 + AI 대화 + 5시를 가리키는 시계 (글자 없음) -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6b48f"/>
+      <stop offset=".55" stop-color="#f08a5b"/>
+      <stop offset="1" stop-color="#ea5a2b"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9e7e2"/>
+      <stop offset="1" stop-color="#dcdad4"/>
+    </linearGradient>
+    <linearGradient id="desk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfae86"/>
+      <stop offset="1" stop-color="#b8925f"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".0"/>
+      <stop offset="1" stop-color="#f6b48f" stop-opacity=".35"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 벽 -->
+  <rect width="600" height="700" fill="url(#wall)"/>
+
+  <!-- 창문 (노을) -->
+  <rect x="262" y="58" width="300" height="320" rx="10" fill="url(#sky)"/>
+  <circle cx="455" cy="300" r="58" fill="#fde7a6" opacity=".9"/>
+  <path d="M262 330 Q330 300 400 322 T562 312 V378 H262 Z" fill="#c9502a" opacity=".55"/>
+  <path d="M262 352 Q360 330 450 348 T562 340 V378 H262 Z" fill="#a8411f" opacity=".6"/>
+  <rect x="262" y="58" width="300" height="320" rx="10" fill="none" stroke="#f8f7f4" stroke-width="10"/>
+  <line x1="412" y1="58" x2="412" y2="378" stroke="#f8f7f4" stroke-width="8"/>
+  <line x1="262" y1="210" x2="562" y2="210" stroke="#f8f7f4" stroke-width="8"/>
+  <!-- 창에서 들어오는 빛 -->
+  <polygon points="262,378 562,378 600,700 120,700" fill="url(#glow)"/>
+
+  <!-- 벽시계: 5시 -->
+  <circle cx="140" cy="190" r="62" fill="#f8f7f4" stroke="#121212" stroke-width="7"/>
+  <g stroke="#121212" stroke-width="4" stroke-linecap="round">
+    <line x1="140" y1="138" x2="140" y2="148"/>
+    <line x1="140" y1="232" x2="140" y2="242"/>
+    <line x1="88" y1="190" x2="98" y2="190"/>
+    <line x1="182" y1="190" x2="192" y2="190"/>
+  </g>
+  <line x1="140" y1="190" x2="140" y2="146" stroke="#121212" stroke-width="5" stroke-linecap="round"/>
+  <line x1="140" y1="190" x2="160" y2="222" stroke="#ea5a2b" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="140" cy="190" r="6" fill="#121212"/>
+
+  <!-- 책상 -->
+  <rect x="0" y="472" width="600" height="228" fill="url(#desk)"/>
+  <rect x="0" y="472" width="600" height="10" fill="#e0c39c"/>
+
+  <!-- 노트북 화면 -->
+  <rect x="178" y="292" width="250" height="172" rx="12" fill="#121212"/>
+  <rect x="190" y="304" width="226" height="148" rx="6" fill="#f8f7f4"/>
+  <!-- 대화 말풍선 (글자 대신 줄) -->
+  <rect x="202" y="318" width="120" height="30" rx="10" fill="#e4e4e1"/>
+  <rect x="212" y="330" width="80" height="6" rx="3" fill="#b9b8b2"/>
+  <rect x="268" y="358" width="136" height="44" rx="10" fill="#ea5a2b"/>
+  <rect x="280" y="370" width="100" height="6" rx="3" fill="#ffd9c8"/>
+  <rect x="280" y="384" width="70" height="6" rx="3" fill="#ffd9c8"/>
+  <rect x="202" y="412" width="96" height="28" rx="10" fill="#e4e4e1"/>
+  <rect x="212" y="423" width="60" height="6" rx="3" fill="#b9b8b2"/>
+  <!-- 노트북 몸체 -->
+  <path d="M150 470 H456 L470 486 Q470 492 462 492 H144 Q136 492 136 486 Z" fill="#2b2b2b"/>
+  <rect x="270" y="470" width="66" height="6" rx="3" fill="#121212"/>
+
+  <!-- AI 반짝이 -->
+  <path d="M452 262 Q456 282 476 286 Q456 290 452 310 Q448 290 428 286 Q448 282 452 262 Z" fill="#ea5a2b"/>
+  <path d="M486 236 Q488 246 498 248 Q488 250 486 260 Q484 250 474 248 Q484 246 486 236 Z" fill="#121212"/>
+
+  <!-- 머그컵 -->
+  <rect x="484" y="418" width="52" height="58" rx="8" fill="#f8f7f4"/>
+  <path d="M536 432 q22 0 22 16 q0 16 -22 16" fill="none" stroke="#f8f7f4" stroke-width="7"/>
+  <rect x="484" y="430" width="52" height="8" fill="#ea5a2b"/>
+  <path d="M500 404 q-6 -10 0 -18 M516 404 q-6 -10 0 -18" fill="none" stroke="#b9b8b2" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- 떠 있는 작은 카드 (막대그래프 + 체크) -->
+  <g transform="translate(52 0)">
+    <rect x="0" y="302" width="118" height="92" rx="14" fill="#f8f7f4"/>
+    <rect x="12" y="314" width="22" height="22" rx="6" fill="#121212"/>
+    <path d="M17 325 l4 4 l8 -9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="42" y="320" width="62" height="6" rx="3" fill="#cfcec8"/>
+    <rect x="12" y="362" width="13" height="20" rx="5" fill="#ea5a2b"/>
+    <rect x="31" y="352" width="13" height="30" rx="5" fill="#ea5a2b"/>
+    <rect x="50" y="366" width="13" height="16" rx="5" fill="#ea5a2b"/>
+    <rect x="69" y="346" width="13" height="36" rx="5" fill="#ea5a2b"/>
+    <rect x="88" y="340" width="13" height="42" rx="5" fill="#ea5a2b"/>
+  </g>
+
+  <!-- 책상 위 노트와 펜 -->
+  <rect x="46" y="520" width="120" height="84" rx="6" fill="#f8f7f4" transform="translate(24 0) rotate(-6 106 562)"/>
+  <g transform="translate(24 0) rotate(-6 106 562)" fill="#d6d5d0">
+    <rect x="60" y="538" width="80" height="5" rx="2.5"/>
+    <rect x="60" y="552" width="64" height="5" rx="2.5"/>
+    <rect x="60" y="566" width="72" height="5" rx="2.5"/>
+  </g>
+  <rect x="150" y="590" width="90" height="8" rx="4" fill="#121212" transform="rotate(-18 195 594)"/>
+</svg>
+    </div>
+  </div>
+</section>
+
+<!-- ② 이런 분께 추천합니다 -->
+<section>
+  <div class="wrap">
+    <h2>이런 분께 추천합니다</h2>
+    <ul class="check-list">
+      <li>매주 같은 보고서를 처음부터 쓰는 분</li>
+      <li>AI를 써 보려다 뭘 물어야 할지 몰라 포기한 분</li>
+      <li>회의록 정리에 30분 이상 쓰는 분</li>
+      <li>팀에 AI 활용법을 전하고 싶은 팀장님</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ③ 커리큘럼 (어두운 구역) -->
+<section class="dark">
+  <div class="wrap">
+    <h2>3시간, 이렇게 진행합니다</h2>
+    <ol class="timeline">
+      <li>
+        <div class="time">14:00</div>
+        <div class="what">AI에게 일 시키는 법</div>
+        <div class="desc sub">요청문 기본 공식 배우기</div>
+      </li>
+      <li>
+        <div class="time">14:50</div>
+        <div class="what">실습 ① 주간보고 10분 만에 쓰기</div>
+        <div class="desc sub">지난주 메모를 넣으면 보고서가 완성됩니다</div>
+      </li>
+      <li class="rest">
+        <div class="time">15:40</div>
+        <div class="what">쉬는 시간</div>
+      </li>
+      <li>
+        <div class="time">15:50</div>
+        <div class="what">실습 ② 회의록·메일 자동 정리</div>
+        <div class="desc sub">녹음 내용을 회의록과 공유 메일로 바꿉니다</div>
+      </li>
+      <li>
+        <div class="time">16:40</div>
+        <div class="what">질의응답 + 템플릿 배포</div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ④ 강점 3가지 -->
+<section>
+  <div class="wrap">
+    <h2>처음이어도 괜찮은 이유</h2>
+    <div class="cards cards-orange">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>노트북만 가져오세요</h3>
+        <p>이론보다 실습입니다. 강사와 함께 한 단계씩 따라 하면 됩니다.</p>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>내 업무로 바로 실습</h3>
+        <p>주간보고, 회의록, 엑셀 정리. 매일 하는 일 3가지를 직접 해 봅니다.</p>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>돌아가서도 바로 쓰기</h3>
+        <p>요청문 템플릿 30개와 1개월 질문방을 드립니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑤ 강사 소개 -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <h2>강사 소개</h2>
+    <div class="teacher">
+      <!-- 사진 자리 (teacher.jpg) -->
+      <div class="photo-slot">teacher.jpg</div>
+      <div>
+        <h3>○○○ 강사</h3>
+        <p class="one">일잘러랩 대표 · AI 업무 활용 교육 전문</p>
+        <ul>
+          <li>· 기업 AI 업무 활용 교육 진행</li>
+          <li>· 직장인 대상 AI 실무 강의 운영</li>
+          <li>· 『퇴근이 빨라지는 AI』 강의 자료 제작</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑥ 참가 혜택 (어두운 구역) -->
+<section class="dark">
+  <div class="wrap">
+    <h2>참가자 전원에게 드립니다</h2>
+    <div class="cards">
+      <div class="card" style="background:var(--dark2)">
+        <div class="num" style="background:var(--orange)">1</div>
+        <h3>요청문 템플릿 30개</h3>
+        <p class="sub">보고서, 회의록, 메일. 복사해서 바로 쓰는 문장 모음</p>
+      </div>
+      <div class="card" style="background:var(--dark2)">
+        <div class="num" style="background:var(--orange)">2</div>
+        <h3>실습 자료 PDF</h3>
+        <p class="sub">오늘 한 실습을 집에서 다시 따라 할 수 있는 자료</p>
+      </div>
+      <div class="card" style="background:var(--dark2)">
+        <div class="num" style="background:var(--orange)">3</div>
+        <h3>1개월 질문방</h3>
+        <p class="sub">회사에서 막히면 바로 물어보세요</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑦ 참가비 -->
+<section>
+  <div class="wrap">
+    <h2 style="text-align:center">참가비</h2>
+    <div class="price-box">
+      <p class="price-old">49,000원</p>
+      <p class="price-new">39,000원</p>
+      <p class="price-note">템플릿 30개 · 실습 자료 PDF · 1개월 질문방 포함</p>
+      <button class="btn btn-big js-apply" type="button">지금 신청하기</button>
+    </div>
+  </div>
+</section>
+
+<!-- ⑧ 자주 묻는 질문 (질문을 누르면 답이 펼쳐지고, 다시 누르면 접힘) -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <h2>자주 묻는 질문</h2>
+    <div class="faq">
+      <details class="faq-item">
+        <summary class="faq-q"><span>Q.</span>노트북이 꼭 필요한가요?</summary>
+        <p class="faq-a"><span>A.</span>네, 직접 따라 하는 실습이라 노트북을 꼭 가져와 주세요.<br>운영체제는 윈도우, 맥 모두 괜찮습니다.</p>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q"><span>Q.</span>AI를 한 번도 안 써 봤는데 괜찮나요?</summary>
+        <p class="faq-a"><span>A.</span>네, 괜찮습니다. 가입부터 첫 질문까지 강사와 함께 한 단계씩 따라 합니다.</p>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q"><span>Q.</span>주차되나요?</summary>
+        <p class="faq-a"><span>A.</span>교내 주차장을 이용하실 수 있습니다.<br>자세한 안내는 신청 후 문자로 보내 드립니다.</p>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q"><span>Q.</span>환불 규정은 어떻게 되나요?</summary>
+        <p class="faq-a"><span>A.</span>특강 3일 전까지는 전액 환불됩니다.<br>그 이후에는 환불이 어렵습니다.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ⑨ 마지막 신청 유도 (어두운 구역) -->
+<section class="dark final">
+  <div class="wrap">
+    <h2>다음 주부터,<br>퇴근이 빨라집니다</h2>
+    <p class="sub">자리가 차면 조기 마감됩니다.</p>
+    <button class="btn btn-big js-apply" type="button">지금 신청하기</button>
+  </div>
+</section>
+
+</main>
+
+<!-- 푸터: 화면 맨 아래 -->
+<footer class="footer">
+  <div class="wrap">
+    <p>주최: 호서대학교 × 일잘러랩</p>
+    <p>문의: hello@example.com</p>
+    <p>안내: 강의 실습용 예제 페이지입니다.</p>
+    <p>© 2026 일잘러랩</p>
+  </div>
+</footer>
+
+<!-- 휴대폰 하단 고정 신청 버튼 (휴대폰에서만 보임) -->
+<div class="sticky-cta">
+  <button class="btn js-apply" type="button">지금 신청하기</button>
+</div>
+
+<!-- 신청 완료 토스트 (모든 신청 버튼을 누르면 잠깐 보임) -->
+<div class="toast" id="toast" role="status" aria-live="polite">신청이 완료되었습니다!</div>
+
+<script>
+  // 신청 버튼을 누르면 토스트를 2초 동안 보여 주고 사라지게 함
+  (function(){
+    var toast = document.getElementById('toast');
+    var timer;
+    document.querySelectorAll('.js-apply').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        toast.classList.add('show');
+        clearTimeout(timer);
+        timer = setTimeout(function(){ toast.classList.remove('show'); }, 2000);
+      });
+    });
+  })();
+
+  // 카운트다운: 2026년 12월 12일 오후 2시(한국 시간)까지 남은 시간을 1초마다 다시 계산
+  (function(){
+    var target = new Date('2026-12-12T14:00:00+09:00').getTime();
+    var d = document.getElementById('cd-d'), h = document.getElementById('cd-h'),
+        m = document.getElementById('cd-m'), s = document.getElementById('cd-s');
+    function two(n){ return (n < 10 ? '0' : '') + n; }
+    function tick(){
+      var left = Math.max(0, Math.floor((target - Date.now()) / 1000));
+      d.textContent = Math.floor(left / 86400);
+      h.textContent = two(Math.floor(left % 86400 / 3600));
+      m.textContent = two(Math.floor(left % 3600 / 60));
+      s.textContent = two(left % 60);
+      if (left === 0) clearInterval(timer);   // 시작 시간이 지나면 0에서 멈춤
+    }
+    var timer = setInterval(tick, 1000);
+    tick();
+  })();
+</script>
+
+</body>
+</html>
