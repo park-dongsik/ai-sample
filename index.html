@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- 2026-11-28 rev.11 — ① 헤더 오른쪽 [신청하기]를 모양만 있는 [로그인] 버튼으로 바꿈(진한 초록 바탕 + 연두 글자, 누르면 아무 일 없음) ② 나머지 [신청하기] 버튼을 누르면 신청서 팝업(이름·연락처·이메일·소속·직위)이 열리고, [신청하기]를 누르면 sample-db의 applicants 표에 저장 → 같은 창에 "신청이 완료되었습니다"와 신청 정보 + [창 닫기] 버튼 표시 ③ 예전 신청 완료 토스트는 뺌 -->
 <!-- 2026-11-21 rev.7 — ① 첫 화면 오른쪽 그림(hero.svg)을 html 안에 직접 넣음: 그림 파일이 없어도 빈 회색 칸이 안 생김 -->
 <!-- 2026-11-21 rev.6 — 휴대폰 화면 아래에 항상 떠 있는 [지금 신청하기] 버튼 추가 (누르면 신청 완료 토스트, 컴퓨터 화면에서는 숨김) -->
 <!-- 2026-11-21 rev.5 — ① 첫 화면에 "특강 시작까지" 카운트다운 추가 (일·시간·분·초, 1초마다 줄어듦) -->
@@ -10,7 +11,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>rev.7 AI 특강 신청 페이지 — 첫 화면 그림 파일 없이도 보이게</title>
+<title>rev.11 AI 특강 신청 페이지 — 신청서 팝업 + DB 저장</title>
 <style>
   /* ===== 기본 색과 글꼴 ===== */
   :root{
@@ -139,14 +140,42 @@
   .footer{background:var(--ink);color:#8d8c87;border-top:1px solid #2a2a2a;padding:32px 0;font-size:14px}
   .footer p+p{margin-top:4px}
 
-  /* ===== 신청 완료 토스트 (화면 가운데 · 와인색) ===== */
-  .toast{position:fixed;left:50%;top:50%;z-index:100;
-    transform:translate(-50%,-50%) scale(.92);opacity:0;pointer-events:none;
-    background:#7b1e2b;color:#fff;font-weight:800;font-size:17px;text-align:center;
-    padding:20px 28px;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.3);
-    width:max-content;max-width:calc(100% - 40px);
-    transition:opacity .25s ease,transform .25s ease}
-  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  /* ===== 헤더 로그인 버튼 (모양만 · 진한 초록 바탕 + 연두 글자) ===== */
+  .btn-login{background:#2f5a1f;color:var(--tag)}
+  .btn-login:hover{filter:none;background:#3a6d27}
+
+  /* ===== 신청서 팝업 ===== */
+  .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+    padding:20px;background:rgba(17,17,17,.6);backdrop-filter:blur(3px)}
+  .modal.open{display:flex}
+  body.modal-on{overflow:hidden}
+  .modal-box{position:relative;width:100%;max-width:440px;max-height:calc(100vh - 40px);overflow-y:auto;
+    background:var(--card);border-radius:20px;padding:30px 24px 26px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .modal-x{position:absolute;right:14px;top:14px;width:34px;height:34px;border:0;border-radius:50%;
+    background:#e2e1dc;color:var(--ink);font-size:20px;line-height:1;cursor:pointer;font-family:inherit}
+  .modal-x:hover{background:#d6d5d0}
+  .modal-title{font-size:21px;font-weight:900;letter-spacing:-.03em;line-height:1.3;margin:0 36px 6px 0}
+  .modal-title b{color:var(--orange)}
+  .modal-desc{font-size:14px;color:var(--sub);margin-bottom:20px}
+  .modal-desc em{color:var(--orange);font-style:normal;font-weight:800}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:14px;font-weight:800;margin-bottom:6px}
+  .field label em{color:var(--orange);font-style:normal;margin-left:2px}
+  .field input{width:100%;font-family:inherit;font-size:16px;padding:12px 14px;border:1.5px solid #d6d5d0;
+    border-radius:12px;background:#fff;color:var(--ink)}
+  .field input:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px rgba(232,89,42,.18)}
+  .field input[aria-invalid="true"]{border-color:#c0392b}
+  .form-msg{min-height:20px;font-size:14px;font-weight:700;color:#c0392b;margin:2px 0 12px}
+  .modal .btn{width:100%;min-height:54px}
+  .modal .btn[disabled]{opacity:.6;cursor:wait}
+  .done-icon{width:56px;height:56px;border-radius:50%;background:var(--orange);color:#fff;font-size:28px;font-weight:900;
+    display:flex;align-items:center;justify-content:center;margin:4px auto 14px}
+  .done-title{text-align:center;font-size:22px;font-weight:900;letter-spacing:-.03em;margin-bottom:18px}
+  .done-list{background:#fff;border-radius:14px;padding:16px 18px;margin-bottom:20px;display:grid;
+    grid-template-columns:auto 1fr;gap:8px 16px;font-size:15px}
+  .done-list dt{color:var(--sub);font-weight:700}
+  .done-list dd{font-weight:700;word-break:break-all}
+  .btn-close{background:var(--ink)}
 
   /* ===== 휴대폰 하단 고정 신청 버튼 ===== */
   .footer{padding-bottom:110px}   /* 고정 버튼이 푸터 글자를 가리지 않게 */
@@ -180,7 +209,8 @@
 <header class="header">
   <div class="wrap">
     <div class="logo">호서대학교 <b>×</b> 일잘러랩</div>
-    <button class="btn btn-small js-apply" type="button">신청하기</button>
+    <!-- 로그인 버튼: 모양만 있고 누르면 아무 일도 일어나지 않음 -->
+    <button class="btn btn-small btn-login" type="button">로그인</button>
   </div>
 </header>
 
@@ -492,20 +522,135 @@
   <button class="btn js-apply" type="button">지금 신청하기</button>
 </div>
 
-<!-- 신청 완료 토스트 (모든 신청 버튼을 누르면 잠깐 보임) -->
-<div class="toast" id="toast" role="status" aria-live="polite">신청이 완료되었습니다!</div>
+<!-- 신청서 팝업 (신청하기 버튼을 누르면 열림) -->
+<div class="modal" id="apply-modal" role="dialog" aria-modal="true" aria-labelledby="apply-title">
+  <div class="modal-box">
+    <button class="modal-x" type="button" data-close aria-label="창 닫기">×</button>
+
+    <!-- 1) 입력 화면 -->
+    <div id="apply-step-form">
+      <h2 class="modal-title" id="apply-title">호서대학교 <b>×</b> 일잘러랩 AI 특강</h2>
+      <p class="modal-desc">신청 정보를 입력해 주세요. <em>*</em> 표시는 꼭 입력해야 합니다.</p>
+      <form id="apply-form" novalidate>
+        <div class="field">
+          <label for="f-name">이름<em>*</em></label>
+          <input id="f-name" name="name" type="text" autocomplete="name" maxlength="50" placeholder="홍길동" required>
+        </div>
+        <div class="field">
+          <label for="f-phone">연락처<em>*</em></label>
+          <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="010-1234-5678" required>
+        </div>
+        <div class="field">
+          <label for="f-email">이메일<em>*</em></label>
+          <input id="f-email" name="email" type="email" autocomplete="email" maxlength="100" placeholder="name@example.com" required>
+        </div>
+        <div class="field">
+          <label for="f-org">소속</label>
+          <input id="f-org" name="organization" type="text" autocomplete="organization" maxlength="100" placeholder="예: 호서대학교">
+        </div>
+        <div class="field">
+          <label for="f-pos">직위</label>
+          <input id="f-pos" name="position" type="text" autocomplete="organization-title" maxlength="50" placeholder="예: 팀장">
+        </div>
+        <p class="form-msg" id="apply-msg" role="alert"></p>
+        <button class="btn" type="submit" id="apply-submit">신청하기</button>
+      </form>
+    </div>
+
+    <!-- 2) 완료 화면 (저장되면 같은 창에서 바뀜) -->
+    <div id="apply-step-done" hidden>
+      <div class="done-icon" aria-hidden="true">✓</div>
+      <h2 class="done-title">신청이 완료되었습니다</h2>
+      <dl class="done-list" id="apply-result"></dl>
+      <button class="btn btn-close" type="button" data-close>창 닫기</button>
+    </div>
+  </div>
+</div>
 
 <script>
-  // 신청 버튼을 누르면 토스트를 2초 동안 보여 주고 사라지게 함
+  // 신청서 팝업: 신청하기 버튼 → 팝업 열기 → 입력값을 /api/apply 로 보내 sample-db에 저장 → 완료 화면
   (function(){
-    var toast = document.getElementById('toast');
-    var timer;
+    var modal = document.getElementById('apply-modal');
+    var form = document.getElementById('apply-form');
+    var stepForm = document.getElementById('apply-step-form');
+    var stepDone = document.getElementById('apply-step-done');
+    var msg = document.getElementById('apply-msg');
+    var submit = document.getElementById('apply-submit');
+    var result = document.getElementById('apply-result');
+    var lastBtn = null;
+
+    function openModal(btn){
+      lastBtn = btn || null;
+      form.reset();
+      msg.textContent = '';
+      form.querySelectorAll('input').forEach(function(i){ i.removeAttribute('aria-invalid'); });
+      stepForm.hidden = false; stepDone.hidden = true;
+      modal.classList.add('open');
+      document.body.classList.add('modal-on');
+      setTimeout(function(){ document.getElementById('f-name').focus(); }, 30);
+    }
+    function closeModal(){
+      modal.classList.remove('open');
+      document.body.classList.remove('modal-on');
+      if (lastBtn) lastBtn.focus();
+    }
+
     document.querySelectorAll('.js-apply').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        toast.classList.add('show');
-        clearTimeout(timer);
-        timer = setTimeout(function(){ toast.classList.remove('show'); }, 2000);
-      });
+      btn.addEventListener('click', function(){ openModal(btn); });
+    });
+    modal.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', closeModal); });
+    modal.addEventListener('click', function(e){ if (e.target === modal && stepForm.hidden) closeModal(); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
+
+    function bad(input, text){
+      input.setAttribute('aria-invalid', 'true');
+      msg.textContent = text;
+      input.focus();
+      return false;
+    }
+    function check(d){
+      form.querySelectorAll('input').forEach(function(i){ i.removeAttribute('aria-invalid'); });
+      if (!d.name) return bad(form.name, '이름을 입력해 주세요.');
+      if (!d.phone) return bad(form.phone, '연락처를 입력해 주세요.');
+      if (!/^[0-9+\-\s()]{8,20}$/.test(d.phone)) return bad(form.phone, '연락처는 숫자로 입력해 주세요. 예: 010-1234-5678');
+      if (!d.email) return bad(form.email, '이메일을 입력해 주세요.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return bad(form.email, '이메일 주소를 다시 확인해 주세요.');
+      return true;
+    }
+    function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var d = {
+        name: form.name.value.trim(),
+        phone: form.phone.value.trim(),
+        email: form.email.value.trim(),
+        organization: form.organization.value.trim(),
+        position: form.position.value.trim()
+      };
+      if (!check(d)) return;
+      msg.textContent = '';
+      submit.disabled = true; submit.textContent = '저장하는 중…';
+
+      fetch('/api/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) })
+        .then(function(res){ return res.json().catch(function(){ return {}; }).then(function(j){ return { ok: res.ok, j: j }; }); })
+        .then(function(r){
+          if (!r.ok || !r.j.ok) {
+            msg.textContent = r.j.error || '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+            if (r.j.field && form[r.j.field]) { form[r.j.field].setAttribute('aria-invalid', 'true'); form[r.j.field].focus(); }
+            return;
+          }
+          var a = r.j.applicant;
+          var rows = [
+            ['신청 번호', a.id], ['이름', a.name], ['연락처', a.phone], ['이메일', a.email],
+            ['소속', a.organization || '-'], ['직위', a.position || '-'], ['신청 시간', a.created_at]
+          ];
+          result.innerHTML = rows.map(function(x){ return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('');
+          stepForm.hidden = true; stepDone.hidden = false;
+          stepDone.querySelector('.btn-close').focus();
+        })
+        .catch(function(){ msg.textContent = '인터넷 연결을 확인하고 다시 시도해 주세요.'; })
+        .then(function(){ submit.disabled = false; submit.textContent = '신청하기'; });
     });
   })();
 
