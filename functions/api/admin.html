@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<!-- 2026-11-28 rev.1 — 관리자 페이지 처음 만듦: 비밀번호 잠금(서버에서 ADMIN_PASSWORD와 비교, 탭을 닫을 때까지 로그인 유지) · 신청자 목록(최근 순, 총 인원) · 줄마다 [수정] 팝업 / [삭제] 확인 후 삭제 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>관리자 — 호서대학교 × 일잘러랩 AI 특강 신청자</title>
+<style>
+  :root{
+    --bg:#e7e6e2; --card:#f6f5f1; --ink:#111111; --sub:#5d5c58;
+    --orange:#e8592a; --tag:#eef08c; --line:#dedcd6; --red:#c0392b; --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  [hidden]{display:none !important}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--orange);color:#fff;
+    font-weight:800;font-size:15px;border:0;border-radius:999px;padding:12px 24px;cursor:pointer;font-family:inherit}
+  .btn:hover{filter:brightness(1.06)}
+  .btn[disabled]{opacity:.6;cursor:wait}
+  .btn-dark{background:var(--ink)}
+  .btn-ghost{background:#e2e1dc;color:var(--ink)}
+  .btn-red{background:var(--red)}
+  .btn-sm{font-size:13px;padding:6px 14px}
+
+  /* 헤더 */
+  .header{position:sticky;top:0;z-index:10;background:rgba(231,230,226,.92);backdrop-filter:blur(8px);border-bottom:1px solid #d6d5d0}
+  .header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+  .logo{font-weight:900;font-size:16px;letter-spacing:-.02em}
+  .logo b{color:var(--orange)}
+  .logo span{display:inline-block;margin-left:8px;background:var(--tag);font-size:12px;padding:2px 10px;border-radius:999px;vertical-align:2px}
+
+  /* 로그인 */
+  .login{min-height:calc(100vh - 61px);display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-box{width:100%;max-width:380px;background:var(--card);border-radius:20px;padding:34px 26px;text-align:center}
+  .lock{width:54px;height:54px;border-radius:50%;background:var(--ink);color:#fff;font-size:24px;
+    display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+  .login-box h1{font-size:22px;font-weight:900;letter-spacing:-.03em;margin-bottom:4px}
+  .login-box p{font-size:14px;color:var(--sub);margin-bottom:20px}
+  .login-box .btn{width:100%;min-height:52px;font-size:16px}
+
+  input{width:100%;font-family:inherit;font-size:16px;padding:12px 14px;border:1.5px solid #d6d5d0;border-radius:12px;background:#fff;color:var(--ink)}
+  input:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px rgba(232,89,42,.18)}
+  input[aria-invalid="true"]{border-color:var(--red)}
+  .msg{min-height:22px;font-size:14px;font-weight:700;color:var(--red);margin:8px 0 12px}
+
+  /* 목록 */
+  .list{padding:32px 0 60px}
+  .summary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .total{background:var(--ink);color:#fff;border-radius:var(--radius);padding:16px 24px;display:flex;align-items:baseline;gap:10px}
+  .total small{font-size:14px;color:#b9b8b3;font-weight:700}
+  .total strong{font-size:34px;font-weight:900;color:var(--orange);line-height:1;font-variant-numeric:tabular-nums}
+  .total em{font-style:normal;font-weight:800}
+  .table-box{background:var(--card);border-radius:var(--radius);overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:900px}
+  th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:13px;color:var(--sub);font-weight:800;background:#efeee9;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#fbfaf7}
+  td.num{font-variant-numeric:tabular-nums;color:var(--sub);white-space:nowrap}
+  td.name{font-weight:800;white-space:nowrap}
+  td.mail{word-break:break-all}
+  td.act{white-space:nowrap;text-align:right}
+  td.act .btn+.btn{margin-left:6px}
+  .empty{text-align:center;color:var(--sub);padding:48px 16px !important}
+  .flash{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;z-index:200;
+    background:var(--ink);color:#fff;font-weight:800;font-size:15px;padding:14px 22px;border-radius:999px;transition:all .25s ease}
+  .flash.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* 팝업 */
+  .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:20px;
+    background:rgba(17,17,17,.6);backdrop-filter:blur(3px)}
+  .modal.open{display:flex}
+  .modal-box{position:relative;width:100%;max-width:440px;max-height:calc(100vh - 40px);overflow-y:auto;
+    background:var(--card);border-radius:20px;padding:28px 24px 24px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .modal-x{position:absolute;right:14px;top:14px;width:34px;height:34px;border:0;border-radius:50%;
+    background:#e2e1dc;font-size:20px;line-height:1;cursor:pointer;font-family:inherit}
+  .modal h2{font-size:20px;font-weight:900;letter-spacing:-.03em;margin:0 36px 4px 0}
+  .modal .desc{font-size:14px;color:var(--sub);margin-bottom:18px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:14px;font-weight:800;margin-bottom:6px}
+  .field label em{color:var(--orange);font-style:normal;margin-left:2px}
+  .row{display:flex;gap:8px}
+  .row .btn{flex:1;min-height:50px}
+  .warn{background:#fff;border-radius:12px;padding:14px 16px;font-size:15px;margin-bottom:18px}
+  .warn b{color:var(--red)}
+
+  @media (max-width:640px){
+    .total strong{font-size:28px}
+    .logo span{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="wrap">
+    <div class="logo">호서대학교 <b>×</b> 일잘러랩<span>관리자</span></div>
+    <button class="btn btn-sm btn-ghost" type="button" id="logout" hidden>로그아웃</button>
+  </div>
+</header>
+
+<!-- 1) 비밀번호 화면 (처음엔 이것만 보임) -->
+<main class="login" id="view-login">
+  <form class="login-box" id="login-form" novalidate>
+    <div class="lock" aria-hidden="true">🔒</div>
+    <h1>관리자 로그인</h1>
+    <p>신청자 목록을 보려면 관리자 비밀번호를 입력하세요.</p>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" aria-label="관리자 비밀번호">
+    <p class="msg" id="login-msg" role="alert"></p>
+    <button class="btn" type="submit" id="login-btn">들어가기</button>
+  </form>
+</main>
+
+<!-- 2) 신청자 목록 (비밀번호가 맞은 뒤에만 보임) -->
+<main class="list" id="view-list" hidden>
+  <div class="wrap">
+    <div class="summary">
+      <div class="total"><small>총 신청 인원</small><strong id="total">0</strong><em>명</em></div>
+      <button class="btn btn-sm btn-dark" type="button" id="reload">새로고침</button>
+    </div>
+    <p class="msg" id="list-msg" role="alert"></p>
+    <div class="table-box">
+      <table>
+        <thead>
+          <tr><th>번호</th><th>이름</th><th>소속</th><th>직위</th><th>연락처</th><th>이메일</th><th>신청 시간</th><th></th></tr>
+        </thead>
+        <tbody id="rows"><tr><td class="empty" colspan="8">불러오는 중…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- 수정 팝업 -->
+<div class="modal" id="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+  <form class="modal-box" id="edit-form" novalidate>
+    <button class="modal-x" type="button" data-close aria-label="닫기">×</button>
+    <h2 id="edit-title">신청 정보 수정</h2>
+    <p class="desc" id="edit-desc"></p>
+    <div class="field"><label for="e-name">이름<em>*</em></label><input id="e-name" name="name" maxlength="50"></div>
+    <div class="field"><label for="e-org">소속</label><input id="e-org" name="organization" maxlength="100"></div>
+    <div class="field"><label for="e-pos">직위</label><input id="e-pos" name="position" maxlength="50"></div>
+    <div class="field"><label for="e-phone">연락처<em>*</em></label><input id="e-phone" name="phone" type="tel" maxlength="20"></div>
+    <div class="field"><label for="e-email">이메일<em>*</em></label><input id="e-email" name="email" type="email" maxlength="100"></div>
+    <p class="msg" id="edit-msg" role="alert"></p>
+    <div class="row">
+      <button class="btn btn-ghost" type="button" data-close>취소</button>
+      <button class="btn" type="submit" id="edit-save">저장</button>
+    </div>
+  </form>
+</div>
+
+<!-- 삭제 확인 팝업 -->
+<div class="modal" id="del-modal" role="dialog" aria-modal="true" aria-labelledby="del-title">
+  <div class="modal-box">
+    <button class="modal-x" type="button" data-close aria-label="닫기">×</button>
+    <h2 id="del-title">정말 삭제할까요?</h2>
+    <p class="desc">삭제하면 되돌릴 수 없습니다.</p>
+    <div class="warn" id="del-who"></div>
+    <p class="msg" id="del-msg" role="alert"></p>
+    <div class="row">
+      <button class="btn btn-ghost" type="button" data-close>취소</button>
+      <button class="btn btn-red" type="button" id="del-ok">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="flash" id="flash" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var API = '/api/admin';
+  var KEY = 'adminToken';   // 탭을 닫으면 사라지는 sessionStorage에 입장권 보관
+  var $ = function(id){ return document.getElementById(id); };
+  var list = [];            // 지금 화면에 있는 신청자 목록
+  var editing = null, deleting = null;
+
+  function getToken(){ try { return sessionStorage.getItem(KEY); } catch(e){ return null; } }
+  function setToken(t){ try { t ? sessionStorage.setItem(KEY, t) : sessionStorage.removeItem(KEY); } catch(e){} memToken = t; }
+  var memToken = getToken();
+  function token(){ return getToken() || memToken; }
+
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  // 서버 호출: 입장권을 붙여 보내고, 401이면 비밀번호 화면으로 돌아감
+  function call(method, body, query){
+    var opt = { method: method, headers: {} };
+    if (token()) opt.headers.Authorization = 'Bearer ' + token();
+    if (body) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+    return fetch(API + (query || ''), opt)
+      .then(function(res){ return res.json().catch(function(){ return {}; }).then(function(j){ j.status = res.status; return j; }); })
+      .catch(function(){ return { ok:false, error:'인터넷 연결을 확인하고 다시 시도해 주세요.' }; })
+      .then(function(j){
+        if (j.status === 401 && j.auth === false) { showLogin('로그인이 끝났습니다. 비밀번호를 다시 입력해 주세요.'); }
+        return j;
+      });
+  }
+
+  // ----- 화면 바꾸기 -----
+  function showLogin(text){
+    setToken(null);
+    closeAll();
+    $('view-list').hidden = true; $('logout').hidden = true;
+    $('view-login').hidden = false;
+    $('login-msg').textContent = text || '';
+    $('pw').value = ''; $('pw').focus();
+  }
+  function showList(){
+    $('view-login').hidden = true;
+    $('view-list').hidden = false; $('logout').hidden = false;
+    load();
+  }
+
+  // ----- 로그인 -----
+  $('login-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var pw = $('pw').value;
+    if (!pw) { $('login-msg').textContent = '비밀번호를 입력해 주세요.'; $('pw').focus(); return; }
+    var btn = $('login-btn'); btn.disabled = true; btn.textContent = '확인하는 중…';
+    call('POST', { action:'login', password: pw }).then(function(j){
+      btn.disabled = false; btn.textContent = '들어가기';
+      if (j.ok && j.token) { setToken(j.token); $('pw').value = ''; showList(); }
+      else { $('login-msg').textContent = j.error || '비밀번호가 맞지 않습니다'; $('pw').select(); }
+    });
+  });
+  $('logout').addEventListener('click', function(){ showLogin(); });
+
+  // ----- 목록 -----
+  function render(){
+    $('total').textContent = list.length;
+    if (!list.length) { $('rows').innerHTML = '<tr><td class="empty" colspan="8">아직 신청자가 없습니다.</td></tr>'; return; }
+    $('rows').innerHTML = list.map(function(a, i){
+      return '<tr>' +
+        '<td class="num">' + esc(a.id) + '</td>' +
+        '<td class="name">' + esc(a.name) + '</td>' +
+        '<td>' + esc(a.organization || '-') + '</td>' +
+        '<td>' + esc(a.position || '-') + '</td>' +
+        '<td class="num">' + esc(a.phone) + '</td>' +
+        '<td class="mail">' + esc(a.email) + '</td>' +
+        '<td class="num">' + esc(a.created_at) + '</td>' +
+        '<td class="act"><button class="btn btn-sm btn-dark" type="button" data-edit="' + i + '">수정</button>' +
+        '<button class="btn btn-sm btn-red" type="button" data-del="' + i + '">삭제</button></td>' +
+      '</tr>';
+    }).join('');
+  }
+  function load(){
+    $('list-msg').textContent = '';
+    call('GET').then(function(j){
+      if (j.ok) { list = j.applicants || []; render(); }
+      else if (j.status !== 401) { $('list-msg').textContent = j.error || '목록을 불러오지 못했습니다.'; }
+    });
+  }
+  $('reload').addEventListener('click', load);
+  $('rows').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.hasAttribute('data-edit')) openEdit(list[+b.getAttribute('data-edit')]);
+    if (b.hasAttribute('data-del')) openDel(list[+b.getAttribute('data-del')]);
+  });
+
+  // ----- 팝업 공통 -----
+  var lastFocus = null;
+  function open(m){ lastFocus = document.activeElement; m.classList.add('open'); }
+  function close(m){ m.classList.remove('open'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  function closeAll(){ document.querySelectorAll('.modal.open').forEach(function(m){ m.classList.remove('open'); }); }
+  document.querySelectorAll('.modal').forEach(function(m){
+    m.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', function(){ close(m); }); });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') document.querySelectorAll('.modal.open').forEach(close);
+  });
+  function flash(t){ var f = $('flash'); f.textContent = t; f.classList.add('show'); clearTimeout(flash.t); flash.t = setTimeout(function(){ f.classList.remove('show'); }, 2000); }
+
+  // ----- 수정 -----
+  var ef = $('edit-form');
+  function openEdit(a){
+    if (!a) return;
+    editing = a;
+    $('edit-desc').textContent = '신청 번호 ' + a.id + ' · 신청 시간 ' + a.created_at;
+    ef.name.value = a.name || ''; ef.organization.value = a.organization || ''; ef.position.value = a.position || '';
+    ef.phone.value = a.phone || ''; ef.email.value = a.email || '';
+    ef.querySelectorAll('input').forEach(function(i){ i.removeAttribute('aria-invalid'); });
+    $('edit-msg').textContent = '';
+    open($('edit-modal'));
+    setTimeout(function(){ ef.name.focus(); }, 30);
+  }
+  function bad(input, t){ input.setAttribute('aria-invalid','true'); $('edit-msg').textContent = t; input.focus(); return false; }
+  ef.addEventListener('submit', function(e){
+    e.preventDefault();
+    var d = { id: editing.id, name: ef.name.value.trim(), organization: ef.organization.value.trim(),
+              position: ef.position.value.trim(), phone: ef.phone.value.trim(), email: ef.email.value.trim() };
+    ef.querySelectorAll('input').forEach(function(i){ i.removeAttribute('aria-invalid'); });
+    if (!d.name) return bad(ef.name, '이름을 입력해 주세요.');
+    if (!/^[0-9+\-\s()]{8,20}$/.test(d.phone)) return bad(ef.phone, '연락처를 다시 확인해 주세요. 예: 010-1234-5678');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return bad(ef.email, '이메일 주소를 다시 확인해 주세요.');
+    var btn = $('edit-save'); btn.disabled = true; btn.textContent = '저장하는 중…';
+    call('PUT', d).then(function(j){
+      btn.disabled = false; btn.textContent = '저장';
+      if (j.ok) {
+        list = list.map(function(a){ return a.id === j.applicant.id ? j.applicant : a; });
+        render(); close($('edit-modal')); flash(j.applicant.name + ' 님 정보를 저장했습니다');
+      } else if (j.status === 404) { close($('edit-modal')); flash(j.error); load(); }
+      else if (j.status !== 401) {
+        $('edit-msg').textContent = j.error || '저장하지 못했습니다.';
+        if (j.field && ef[j.field]) { ef[j.field].setAttribute('aria-invalid','true'); ef[j.field].focus(); }
+      }
+    });
+  });
+
+  // ----- 삭제 -----
+  function openDel(a){
+    if (!a) return;
+    deleting = a;
+    $('del-who').innerHTML = '<b>' + esc(a.name) + '</b> 님 (' + esc(a.email) + ')의 신청을 삭제합니다.';
+    $('del-msg').textContent = '';
+    open($('del-modal'));
+    setTimeout(function(){ $('del-modal').querySelector('.btn-ghost').focus(); }, 30);
+  }
+  $('del-ok').addEventListener('click', function(){
+    var btn = this; btn.disabled = true; btn.textContent = '삭제하는 중…';
+    call('DELETE', null, '?id=' + encodeURIComponent(deleting.id)).then(function(j){
+      btn.disabled = false; btn.textContent = '삭제';
+      if (j.ok || j.status === 404) {
+        list = list.filter(function(a){ return a.id !== deleting.id; });
+        render(); close($('del-modal')); flash(j.ok ? deleting.name + ' 님 신청을 삭제했습니다' : j.error);
+      } else if (j.status !== 401) { $('del-msg').textContent = j.error || '삭제하지 못했습니다.'; }
+    });
+  });
+
+  // ----- 시작: 이 탭에 입장권이 있으면 바로 목록, 없으면 비밀번호 화면 -----
+  if (token()) showList(); else showLogin();
+})();
+</script>
+</body>
+</html>
